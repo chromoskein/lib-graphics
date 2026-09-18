@@ -162,8 +162,8 @@ export const phongFunction: string = /* wgsl */`
         var norm =  -intersection.normal;
         var lightDir = ray.direction;
         var diffuse = max(dot(norm, lightDir), 0.0);
-        
-        var result = (ambient + diffuse) * color.rgb;
+
+        var result = max(ambient + diffuse * 0.5, 1.0) * color.rgb;
 
         return vec4(result, color.a);
     }

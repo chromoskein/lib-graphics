@@ -50,6 +50,7 @@ export class ViewportPipelines {
                 { binding: 1, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: "float", viewDimension: "2d" } },
                 { binding: 2, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: "unfilterable-float", viewDimension: "2d" } },
                 { binding: 3, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: "unfilterable-float", viewDimension: "2d" } },
+                { binding: 4, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: "unfilterable-float", viewDimension: "2d" } },
             ]
         });
         this.bindGroupLayouts.set("MergeInputTextures", inputTexturesBGL);
@@ -114,6 +115,7 @@ export class Viewport3D extends Viewport {
 
     protected deferredPass: DeferredPass = new DeferredPass(this.graphicsLibrary);
     protected ssaoPass: ScreenSpaceAmbientOcclusionPass = new ScreenSpaceAmbientOcclusionPass(this.graphicsLibrary, 0.3);
+    protected ssaoPass2: ScreenSpaceAmbientOcclusionPass = new ScreenSpaceAmbientOcclusionPass(this.graphicsLibrary, 1.0);
 
     public ssaoEnabled: boolean;
 
@@ -151,6 +153,11 @@ export class Viewport3D extends Viewport {
 
         this.ssaoPass.depthTextureView = this.deferredPass.depthTexture?.createView() || null;
         this.ssaoPass.normalsTextureView = this.deferredPass.normalsTexture?.createView() || null;
+
+        this.ssaoPass2.onResize(width, height);
+
+        this.ssaoPass2.depthTextureView = this.deferredPass.depthTexture?.createView() || null;
+        this.ssaoPass2.normalsTextureView = this.deferredPass.normalsTexture?.createView() || null;
     }
 
     async render(textureView: GPUTextureView, frametime: number): Promise<void> {
@@ -175,10 +182,12 @@ export class Viewport3D extends Viewport {
         //#region Before Render 
         if (this.dirty) {
             this.ssaoPass.setDirty();
+            this.ssaoPass2.setDirty();
         }
 
         if (this.ssaoEnabled) {
             this.ssaoPass.beforeRender();
+            this.ssaoPass2.beforeRender();
         }
         //#endregion Before Render
 
@@ -200,6 +209,7 @@ export class Viewport3D extends Viewport {
         if (this.ssaoEnabled){
             const computePassEncoder = commandEncoder.beginComputePass();
             this.ssaoPass.render({ encoder: computePassEncoder, cameraBindGroup, frameID: this._frameID });
+            this.ssaoPass2.render({ encoder: computePassEncoder, cameraBindGroup, frameID: this._frameID });
             computePassEncoder.end();
         }
         else{
@@ -208,14 +218,15 @@ export class Viewport3D extends Viewport {
 
         let mergeBindGroupInputTextures = null;
         const layout = this._pipelines.bindGroupLayouts.get("MergeInputTextures");
-        if (this.deferredPass.colorTexture && this.deferredPass.volumeTexture && this.deferredPass.aoTexture && this.ssaoPass.ssaoTexture && layout) {
+        if (this.deferredPass.colorTexture && this.deferredPass.volumeTexture && this.deferredPass.aoTexture && this.ssaoPass.ssaoTexture && this.ssaoPass2.ssaoTexture && layout) {
             mergeBindGroupInputTextures = this.graphicsLibrary.device.createBindGroup({
                 layout,
                 entries: [
                     { binding: 0, resource: this.deferredPass.colorTexture.createView() },
                     { binding: 1, resource: this.deferredPass.volumeTexture.createView() },
                     { binding: 2, resource: this.ssaoPass.ssaoTexture.createView() },
-                    { binding: 3, resource: this.deferredPass.aoTexture.createView() }
+                    { binding: 3, resource: this.deferredPass.aoTexture.createView() },
+                    { binding: 4, resource: this.ssaoPass2.ssaoTexture.createView() },
                 ],
             });
         }

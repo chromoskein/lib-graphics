@@ -50,6 +50,8 @@ export class ScreenSpaceAmbientOcclusionPass extends Pass {
 
     private _accumulatedSamplesCount = 0;
 
+    private randomScale = 0.62;
+
     constructor(graphicsLibrary: GraphicsLibrary, radius: number = 0.1, depthTextureView = null, normalsTextureView = null) {
         super();
 
@@ -106,7 +108,7 @@ export class ScreenSpaceAmbientOcclusionPass extends Pass {
             // Recompute samples
             for (let i = 0; i < 256; i++) {
                 const sample = vec3.clone(this._noise.normalizedImageSamples[i]);
-                vec3.scale(sample, sample, Math.random());
+                vec3.scale(sample, sample, this.randomScale);
 
                 const scale = lerp(0.1, 1.0, (i / 64.0) * (i / 64.0));
                 vec3.scale(sample, sample, scale);

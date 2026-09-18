@@ -35,6 +35,7 @@ struct Globals {
 @group(1) @binding(1) var colorsVolume : texture_2d<f32>;
 @group(1) @binding(2) var ambientOcclusion : texture_2d<f32>;
 @group(1) @binding(3) var ambientOcclusionParameters : texture_2d<f32>;
+@group(1) @binding(4) var ambientOcclusion2 : texture_2d<f32>;
 
 @fragment
 fn main_fragment(@builtin(position) Position : vec4<f32>,
@@ -50,7 +51,9 @@ fn main_fragment(@builtin(position) Position : vec4<f32>,
     let aoParameters = textureLoad(ambientOcclusionParameters, vec2<i32>(coordinates), 0).xy;
 
     let ao = textureLoad(ambientOcclusion, vec2<i32>(coordinates), 0).x / 64.0;
-    var aoInverse = 1.0 - ao;
+    let ao2 = textureLoad(ambientOcclusion2, vec2<i32>(coordinates), 0).x / 64.0;
+
+    var aoInverse = max(1.0 - (max(ao, ao2) * 1.2), 0);
 
     // Turns off SSAO if parameter ao.x == 0.0
     if (aoParameters.x == 0.0) {

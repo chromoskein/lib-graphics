@@ -17,11 +17,13 @@ export class OrbitCamera extends Camera {
     private lastX = 0;
     private lastY = 0;
     private mousePressed = false;
-    private distance = 4;
+    private distance = 3;
 
     constructor(device: GPUDevice, width: number, height: number, near = 0.01, fieldOfView = 45.0) {
         super(device, width, height, near, fieldOfView);
         this._position = vec3.fromValues(0, 0, 1);
+        this.worldTransform.rotateDegX(-90);
+        this.worldTransform.rotateDegY(0 / 5.0);
         this.updateCPU();
     }
 
