@@ -1,4 +1,4 @@
-import { cameraStruct } from "../shared";
+import { cameraStruct, fragmentToRayFunction, phongFunction, rayTracingStructs } from "../shared";
 
 export function meshShaderTemplate(
     globals: string,
@@ -16,6 +16,11 @@ export function meshShaderTemplate(
 ${cameraStruct}
 
 @group(0) @binding(0) var<uniform> camera: Camera;
+
+${rayTracingStructs}
+
+${fragmentToRayFunction}
+${phongFunction}
 
 ${globals}
 ${vertexShader}

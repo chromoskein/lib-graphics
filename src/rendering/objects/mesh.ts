@@ -76,6 +76,7 @@ export class Mesh extends ConcreteObject {
             @builtin(position) Position: vec4<f32>,
             @location(0) @interpolate(flat) instanceIndex: u32,
             @location(1) @interpolate(linear) barycentric: vec3<f32>,
+            @location(2) @interpolate(linear) normal: vec4<f32>,
         };
         
         @vertex
@@ -85,6 +86,7 @@ export class Mesh extends ConcreteObject {
         -> VertexOutput {
             var vertex = vertices[vertexIndex];
             var position = vertex.position;
+            var normal = vertex.normal;
             var barycentric = vec3<f32>(1.0, 0.0, 0.0);
 
             if (vertexIndex % 3 == 1) {
@@ -95,31 +97,52 @@ export class Mesh extends ConcreteObject {
                 barycentric = vec3<f32>(0.0, 0.0, 1.0);
             }
 
+
+            var a0 = meshUniform.modelMatrix[0].xyz;
+            var a1 = meshUniform.modelMatrix[1].xyz;
+            var a2 = meshUniform.modelMatrix[2].xyz;
+
+            var worldNormal = cross(a1, a2) * normal.x + cross(a2, a0) * normal.y + cross(a0, a1) * normal.z;
+            if (dot(a0, cross(a1, a2)) < 0.0) {
+                worldNormal = -worldNormal;
+            }
+
+            var magnitude = length(worldNormal);
+
             return VertexOutput(
                 camera.projectionView * meshUniform.modelMatrix * vec4<f32>(position.xyz, 1.0),
                 instanceIndex,
-                barycentric
+                barycentric,
+                vec4<f32>(normal.xyz, 0.0)
             );
         }
     `;
 
     public static gpuFragmentShader = /* wgsl */`
-        // if (vertexOutput.barycentric.x < 0.01 || vertexOutput.barycentric.y < 0.01 || vertexOutput.barycentric.z < 0.01) {
-        // if (all(vertexOutput.barycentric > vec3<f32>(0.1))) {
-        //     discard;
-        // }
+        //if (vertexOutput.barycentric.x < 0.01 || vertexOutput.barycentric.y < 0.01 || vertexOutput.barycentric.z < 0.01) {
+        //if (all(vertexOutput.barycentric > vec3<f32>(0.03))) {
+        //    discard;
+        //}
+        //}
     `;
 
     static gpuCodeGetOutputValue(variable: "color" | "normal" | "ao"): string {
         switch (variable) {
             case "color": {
                 return /* wgsl */`
-                    let color = vec4<f32>(meshUniform.color.rgb, 1.0);
+                    let ray = fragmentSpaceToRay(vertexOutput.Position);
+                    var ambient = 0.7;
+        
+                    var norm =  -vertexOutput.normal.xyz;
+                    var lightDir = ray.direction;
+                    var diffuse = max(dot(norm, lightDir), 0.0);
+                    var phong = min(ambient + diffuse * 0.3, 1.0) * meshUniform.color.rgb;
+                    let color = vec4<f32>(phong.rgb, 1.0);
                 `;
             }
             case "normal": {
                 return /* wgsl */`
-                    let normal = vec4<f32>(1.0);
+                    let normal = normalize(vertexOutput.normal);
                 `;
             }
             case "ao": {
